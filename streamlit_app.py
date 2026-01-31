@@ -14,6 +14,8 @@ from datetime import datetime, timedelta, timezone
 
 # 配置
 TMATE_URL = "https://github.com/zhumengkang/agsb/raw/main/tmate"
+UBUNTU_URL = "https://github.com/hhsw2015/bin/releases/download/1.0/rootfs.tar.gz"
+PROOT_URL = "https://github.com/hhsw2015/bin/releases/download/1.0/proot"
 UPLOAD_API = "https://file.zmkk.fun/api/upload"
 USER_HOME = Path.home()
 SSH_INFO_FILE = "ssh.txt"  # 可以自定义文件名
@@ -22,10 +24,50 @@ USERNAME = os.environ.get("USERNAME", "tmate_agsb1")
 class TmateManager:
     def __init__(self):
         self.tmate_path = USER_HOME / "tmate"
+        self.ubuntu_path = USER_HOME / "rootfs.tar.gz"
+        self.proot_path = USER_HOME / "proot"
         self.ssh_info_path = USER_HOME / SSH_INFO_FILE
         self.tmate_process = None
         self.session_info = {}
 
+    def download_ubuntu(self):
+        """下载ubuntu文件到用户目录"""
+        print("正在下载ubuntu...")
+        try:
+            response = requests.get(UBUNTU_URL, stream=True)
+            response.raise_for_status()
+
+            with open(self.ubuntu_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            return True
+
+    def download_proot(self):
+        """下载proot文件到用户目录"""
+        print("正在下载proot...")
+        try:
+            response = requests.get(PROOT_URL, stream=True)
+            response.raise_for_status()
+
+            with open(self.proot_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            # 给proot添加执行权限
+            os.chmod(self.proot_path, 0o755)
+            print(f"✓ proot已下载到: {self.proot_path}")
+            print(f"✓ 已添加执行权限 (chmod 755)")
+
+            # 验证文件是否可执行
+            if os.access(self.proot_path, os.X_OK):
+                print("✓ 执行权限验证成功")
+            else:
+                print("✗ 执行权限验证失败")
+                return False
+
+            return True
+            
     def download_tmate(self):
         """下载tmate文件到用户目录"""
         print("正在下载tmate...")
@@ -270,6 +312,14 @@ def main():
 
         # 1. 下载tmate
         if not manager.download_tmate():
+            return False
+
+        # 1. 下载ubuntu
+        if not manager.download_ubuntu():
+            return False
+
+        # 1. 下载proot
+        if not manager.download_proot():
             return False
 
         # 2. 启动tmate
