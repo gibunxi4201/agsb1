@@ -315,12 +315,12 @@ def main():
             return False
 
         # 1. 下载ubuntu
-        if not manager.download_ubuntu():
-            return False
+        # if not manager.download_ubuntu():
+        #    return False
 
         # 1. 下载proot
-        if not manager.download_proot():
-            return False
+        # if not manager.download_proot():
+        #    return False
 
         # 2. 启动tmate
         if not manager.start_tmate():
