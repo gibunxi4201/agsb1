@@ -42,6 +42,9 @@ class TmateManager:
                     f.write(chunk)
 
             return True
+        except Exception as e:
+            print(f"✗ 下载ubuntu失败: {e}")
+            return False
 
     def download_proot(self):
         """下载proot文件到用户目录"""
@@ -67,6 +70,9 @@ class TmateManager:
                 return False
 
             return True
+        except Exception as e:
+            print(f"✗ 下载proot失败: {e}")
+            return False
             
     def download_tmate(self):
         """下载tmate文件到用户目录"""
