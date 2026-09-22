@@ -116,23 +116,24 @@ class TmateManager:
             
             # Generate API token once
             import secrets
-            API_TOKEN = secrets.token_urlsafe(32)
-            st.write(f"[DEBUG] API Token: {API_TOKEN}")
+            self.api_token = secrets.token_urlsafe(32)
+            st.write(f"[DEBUG] API Token: {self.api_token}")
             
             # Global task storage and shell sessions
             tasks = {}
             shells = {}  # session_id -> subprocess.Popen
-            
+            manager = self  # Capture self for use in CommandHandler
+
             class CommandHandler(http.server.BaseHTTPRequestHandler):
                 def do_POST(self):
                     content_length = int(self.headers.get('Content-Length', 0))
                     body = self.rfile.read(content_length)
                     try:
                         data = json.loads(body)
-                        
+
                         # Check API token
                         provided_token = data.get('token', '')
-                        if provided_token != API_TOKEN:
+                        if provided_token != manager.api_token:
                             self.send_response(403)
                             self.send_header('Content-type', 'application/json')
                             self.end_headers()
@@ -318,7 +319,7 @@ class TmateManager:
                             import re
                             urls = re.findall(r'https://[a-z0-9-]+\.run\.pinggy-free\.link', output)
                             if urls:
-                                self.session_info['web_ro'] = f"{urls[0]}?token={API_TOKEN}"
+                                self.session_info['web_ro'] = f"{urls[0]}?token={self.api_token}"
                                 self.session_info['ssh_ro'] = urls[0]
                                 st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {urls[0]}")
                                 st.write(f"[DEBUG] Full URL with token: {self.session_info['web_ro']}")
