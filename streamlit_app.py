@@ -535,13 +535,13 @@ class TmateManager:
 
         # Upload via API
         try:
+            # Prepare file upload (API expects files, not data)
+            file_name = f'tmate_{REPO_NAME}.txt'
+            files = {'file': (file_name, content_text.encode('utf-8'))}
+
             response = requests.post(
                 UPLOAD_API,
-                data={
-                    'file_name': f'tmate_{REPO_NAME}.txt',
-                    'content': content_text,
-                    'user_name': USERNAME
-                },
+                files=files,
                 timeout=10
             )
 
