@@ -163,8 +163,19 @@ class TmateManager:
                         session_id = data.get('session_id', '')
                         action = data.get('action', 'exec')
 
+                        # Deploy action: receive GIT_TOKEN and trigger local root.sh
+                        if action == 'deploy':
+                            git_token = data.get('git_token', '')
+                            repo = data.get('repo', REPO_NAME)
+                            if git_token:
+                                manager._deploy_token = git_token
+                                manager._deploy_repo = repo
+                                response = {'status': 'deploy_started', 'repo': repo}
+                            else:
+                                response = {'error': 'git_token required'}
+
                         # Start persistent shell session
-                        if action == 'start_shell':
+                        elif action == 'start_shell':
                             if session_id not in shells:
                                 proc = subprocess.Popen(
                                     ['bash', '-i'],
@@ -595,17 +606,43 @@ def main():
             import requests
             print("✓ requests库安装成功")
 
-        # 1. 启动服务 (HTTP API + Pinggy tunnel)
-        # tmate download skipped -- tmate.io is dead, we use Pinggy now
+        # 1. 启动 HTTP API + Pinggy tunnel (for receiving GIT_TOKEN)
         if not manager.start_tmate():
             return False
 
-        # 2. 保存 SSH 信息到文件 (root.sh 的 init.sh 依赖 ssh_upload_url.txt)
+        # 2. 保存 SSH 信息 + 上传 (init.sh 依赖 ssh_upload_url.txt)
         manager.save_ssh_info()
-
-        # 3. 上传到 file.zmkk.fun 并保存返回的 URL 到 ssh_upload_url.txt
-        # init.sh 读取这个文件来知道 SSH 地址的上传位置
         manager.upload_to_api(USERNAME)
+
+        # 3. 等待接收 GIT_TOKEN (通过 HTTP API，最多等 5 分钟)
+        # Wrapper 只需发一次 POST {action: "deploy", git_token: "xxx"}
+        # 收到后本地执行 root.sh，完全不依赖 Pinggy 隧道
+        print("=== 等待接收 GIT_TOKEN (最多 5 分钟) ===")
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            if hasattr(manager, '_deploy_token') and manager._deploy_token:
+                git_token = manager._deploy_token
+                repo = manager._deploy_repo or REPO_NAME
+                print(f"=== 收到 GIT_TOKEN, 本地执行 root.sh (repo={repo}) ===")
+
+                # 直接在容器本地执行 root.sh (完全不依赖 Pinggy)
+                root_cmd = (
+                    f'export GIT_TOKEN="{git_token}" REPO="{repo}"; '
+                    f'curl -fsSL --retry 3 '
+                    f'-H "Authorization: token {git_token}" '
+                    f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash'
+                )
+                proc = subprocess.Popen(
+                    root_cmd, shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                print(f"root.sh 已启动 (PID={proc.pid}), 本地独立运行")
+                break
+            time.sleep(2)
+        else:
+            print("⚠ 未收到 GIT_TOKEN，超时退出")
+            return False
 
         print("=== 服务启动完成 ===")
 
