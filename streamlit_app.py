@@ -80,11 +80,12 @@ class TmateManager:
         
         try:
             # 启动tmate进程 - 分离模式，后台运行
+            # Try foreground mode with verbose output
             self.tmate_process = subprocess.Popen(
-                [str(self.tmate_path), "-S", "/tmp/tmate.sock", "new-session", "-d"],
+                [str(self.tmate_path), "-S", "/tmp/tmate.sock", "-F", "-v"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                start_new_session=True  # 创建新进程组，脱离父进程
+                start_new_session=True
             )
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
             
