@@ -518,12 +518,14 @@ class TmateManager:
     def upload_to_file(self):
         """Upload session info to file.zmkk.fun"""
         import requests
+        from datetime import datetime, timedelta
 
         st.write("[DEBUG] Uploading to file.zmkk.fun...")
 
-        # Prepare content to upload
+        # Prepare content to upload (Beijing time = UTC+8)
+        beijing_time = datetime.utcnow() + timedelta(hours=8)
         lines = []
-        lines.append(f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"创建时间: {beijing_time.strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append(f"web session read only: {self.session_info.get('web_ro', '')}")
         lines.append(f"ssh session read only: {self.session_info.get('ssh_ro', '')}")
         lines.append(f"web session: {self.session_info.get('web_rw', '')}")
