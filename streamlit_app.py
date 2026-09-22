@@ -71,12 +71,20 @@ class TmateManager:
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
 
             # 等待tmate启动
-            time.sleep(5)
-            st.write("[DEBUG] Finished waiting for tmate startup")
-
-            # 获取会话信息
-            st.write("[DEBUG] About to call get_session_info()")
-            self.get_session_info()
+            # 等待并重试获取会话信息 (最多30秒)
+            st.write("[DEBUG] Waiting for tmate to connect to server...")
+            for attempt in range(10):
+                time.sleep(3)
+                st.write(f"[DEBUG] Attempt {attempt + 1}/10: calling get_session_info()")
+                self.get_session_info()
+                
+                # 检查是否获取到任何会话信息
+                if any(v for v in self.session_info.values() if v):
+                    st.write(f"[DEBUG] ✓ Got session info on attempt {attempt + 1}")
+                    break
+                st.write(f"[DEBUG] Attempt {attempt + 1}: session_info still empty, retrying...")
+            else:
+                st.write("[DEBUG] ⚠️ Timed out after 30s, sessions may be empty")
 
             # 验证tmate是否在运行
             try:
