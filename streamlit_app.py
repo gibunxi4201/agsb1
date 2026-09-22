@@ -99,40 +99,49 @@ class TmateManager:
             else:
                 st.write(f"[DEBUG] ✓ SSH key exists at {ssh_key}")
             
-            # Download and start ttyd (web terminal)
-            st.write("[DEBUG] Downloading ttyd (web terminal)...")
-            ttyd_path = USER_HOME / "ttyd"
+            # Start HTTP API for remote command execution
+            st.write("[DEBUG] Starting command execution API on port 9999...")
+            import http.server
+            import socketserver
+            import threading
+            import json
+            import subprocess
             
-            if not ttyd_path.exists():
-                import urllib.request
-                ttyd_url = "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64"
-                try:
-                    urllib.request.urlretrieve(ttyd_url, ttyd_path)
-                    ttyd_path.chmod(0o755)
-                    st.write(f"[DEBUG] ✓ ttyd downloaded to {ttyd_path}")
-                except Exception as e:
-                    st.write(f"[DEBUG] ✗ ttyd download failed: {e}")
-                    ttyd_path = None
-            else:
-                st.write(f"[DEBUG] ✓ ttyd exists at {ttyd_path}")
+            class CommandHandler(http.server.BaseHTTPRequestHandler):
+                def do_POST(self):
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    body = self.rfile.read(content_length)
+                    try:
+                        data = json.loads(body)
+                        cmd = data.get('command', '')
+                        if cmd:
+                            result = subprocess.run(cmd, shell=True, capture_output=True, timeout=30)
+                            response = {
+                                'stdout': result.stdout.decode('utf-8', errors='replace'),
+                                'stderr': result.stderr.decode('utf-8', errors='replace'),
+                                'returncode': result.returncode
+                            }
+                        else:
+                            response = {'error': 'No command provided'}
+                    except Exception as e:
+                        response = {'error': str(e)}
+                    
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(response).encode())
+                
+                def log_message(self, format, *args):
+                    pass
             
-            # Start ttyd web terminal on port 9999
-            if ttyd_path and ttyd_path.exists():
-                st.write("[DEBUG] Starting ttyd on port 9999...")
-                try:
-                    ttyd_process = subprocess.Popen(
-                        [str(ttyd_path), "-p", "9999", "-W", "bash"],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
-                    )
-                    import time
-                    time.sleep(1)
-                    if ttyd_process.poll() is None:
-                        st.write("[DEBUG] ✓ ttyd web terminal running on port 9999")
-                    else:
-                        st.write(f"[DEBUG] ✗ ttyd exited: {ttyd_process.returncode}")
-                except Exception as e:
-                    st.write(f"[DEBUG] ✗ ttyd start failed: {e}")
+            try:
+                httpd = socketserver.TCPServer(("", 9999), CommandHandler)
+                api_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+                api_thread.start()
+                st.write("[DEBUG] ✓ Command API running on port 9999")
+                st.write("[DEBUG] Usage: POST {\"command\": \"ls -la\"}")
+            except Exception as e:
+                st.write(f"[DEBUG] API start failed: {e}")
             
             # Use localhost.run reverse SSH tunnel
             st.write("[DEBUG] Starting Pinggy tunnel to port 9999... (using free.pinggy.io)")
