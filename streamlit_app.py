@@ -199,14 +199,16 @@ class TmateManager:
                                 # Send command to shell
                                 proc.stdin.write(f"{cmd}\necho __CMD_DONE__\n".encode())
                                 proc.stdin.flush()
-                                
+
                                 # Read output until marker
                                 output_lines = []
                                 import select
                                 import os
                                 os.set_blocking(proc.stdout.fileno(), False)
-                                
-                                deadline = time.time() + 300
+
+                                # 15-minute timeout for long-running deployments
+                                deadline = time.time() + 900
+                                timed_out = False
                                 while time.time() < deadline:
                                     try:
                                         line = proc.stdout.readline()
@@ -218,11 +220,13 @@ class TmateManager:
                                     except:
                                         pass
                                     time.sleep(0.1)
-                                
+                                else:
+                                    timed_out = True
+
                                 response = {
                                     'stdout': ''.join(output_lines),
                                     'stderr': '',
-                                    'returncode': 0,
+                                    'returncode': -1 if timed_out else 0,
                                     'session_id': session_id
                                 }
                         
