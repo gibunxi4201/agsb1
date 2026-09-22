@@ -83,7 +83,9 @@ class TmateManager:
             # Use localhost.run reverse SSH tunnel (no outbound connection needed)
             st.write("[DEBUG] Starting localhost.run tunnel...")
             self.tmate_process = subprocess.Popen(
-                ["ssh", "-o", "StrictHostKeyChecking=no", 
+                ["ssh", "-T", "-N",
+                 "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=60",
                  "-R", "80:localhost:8501", 
                  "ssh.localhost.run"],
                 stdout=subprocess.PIPE,
