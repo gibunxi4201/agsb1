@@ -113,8 +113,9 @@ class TmateManager:
             import json
             import subprocess
             
-            # Global task storage
+            # Global task storage and shell sessions
             tasks = {}
+            shells = {}  # session_id -> subprocess.Popen
             
             class CommandHandler(http.server.BaseHTTPRequestHandler):
                 def do_POST(self):
@@ -125,6 +126,69 @@ class TmateManager:
                         cmd = data.get('command', '')
                         async_mode = data.get('async', False)
                         task_id = data.get('task_id', '')
+                        session_id = data.get('session_id', '')
+                        action = data.get('action', 'exec')  # exec | start_shell | close_shell
+                        
+                        # Start persistent shell session
+                        if action == 'start_shell':
+                            if session_id not in shells:
+                                proc = subprocess.Popen(
+                                    ['bash', '-i'],
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    bufsize=0
+                                )
+                                shells[session_id] = proc
+                                response = {'status': 'shell_started', 'session_id': session_id}
+                            else:
+                                response = {'status': 'shell_exists', 'session_id': session_id}
+                        
+                        # Execute in persistent shell
+                        elif session_id and session_id in shells:
+                            proc = shells[session_id]
+                            if proc.poll() is not None:
+                                response = {'error': 'Shell died', 'returncode': proc.returncode}
+                                del shells[session_id]
+                            else:
+                                # Send command to shell
+                                proc.stdin.write(f"{cmd}\necho __CMD_DONE__\n".encode())
+                                proc.stdin.flush()
+                                
+                                # Read output until marker
+                                output_lines = []
+                                import select
+                                import os
+                                os.set_blocking(proc.stdout.fileno(), False)
+                                
+                                deadline = time.time() + 300
+                                while time.time() < deadline:
+                                    try:
+                                        line = proc.stdout.readline()
+                                        if line:
+                                            line_str = line.decode('utf-8', errors='replace')
+                                            if '__CMD_DONE__' in line_str:
+                                                break
+                                            output_lines.append(line_str)
+                                    except:
+                                        pass
+                                    time.sleep(0.1)
+                                
+                                response = {
+                                    'stdout': ''.join(output_lines),
+                                    'stderr': '',
+                                    'returncode': 0,
+                                    'session_id': session_id
+                                }
+                        
+                        # Close shell session
+                        elif action == 'close_shell' and session_id:
+                            if session_id in shells:
+                                shells[session_id].terminate()
+                                del shells[session_id]
+                                response = {'status': 'shell_closed'}
+                            else:
+                                response = {'error': 'Shell not found'}
                         
                         # Query async task result
                         if task_id:
