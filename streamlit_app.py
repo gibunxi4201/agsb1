@@ -136,7 +136,7 @@ class TmateManager:
                             self.send_response(403)
                             self.send_header('Content-type', 'application/json')
                             self.end_headers()
-                            self.wfile.write(json.dumps({{'error': 'Invalid token'}}).encode())
+                            self.wfile.write(json.dumps({'error': 'Invalid token'}).encode())
                             return
                         cmd = data.get('command', '')
                         async_mode = data.get('async', False)
