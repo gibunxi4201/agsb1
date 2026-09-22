@@ -245,12 +245,12 @@ class TmateManager:
                         # Execute command
                         elif cmd:
                             if async_mode:
-                                # Output to file (not PIPE) to avoid buffer deadlock
-                                # on long commands like root.sh (PIPE fills up, process blocks)
-                                log_f = open('/tmp/async_task.log', 'w')
+                                # Discard output entirely (DEVNULL) to avoid:
+                                # 1. PIPE buffer deadlock (64KB fills up, process blocks)
+                                # 2. File write issues in proot
                                 proc = subprocess.Popen(cmd, shell=True,
-                                                      stdout=log_f,
-                                                      stderr=log_f)
+                                                      stdout=subprocess.DEVNULL,
+                                                      stderr=subprocess.DEVNULL)
                                 task_id = str(len(tasks))
                                 tasks[task_id] = {'proc': proc, 'cmd': cmd}
                                 response = {'status': 'started', 'task_id': task_id}
