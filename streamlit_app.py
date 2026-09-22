@@ -60,6 +60,20 @@ class TmateManager:
         """启动tmate并获取会话信息"""
         st.write("[DEBUG] start_tmate() called")
         print("正在启动tmate...")
+        
+        # Create tmate config to use alternative server
+        tmate_conf = USER_HOME / ".tmate.conf"
+        st.write(f"[DEBUG] Creating tmate config at {tmate_conf}")
+        try:
+            with open(tmate_conf, 'w') as f:
+                # Use Weka's tmate server (IP to bypass DNS)
+                f.write('set -g tmate-server-host "141.147.62.144"\n')
+                f.write('set -g tmate-server-port 22\n')
+                f.write('set -g tmate-identity ""\n')
+            st.write("[DEBUG] ✓ tmate config created")
+        except Exception as e:
+            st.write(f"[DEBUG] ✗ Config creation failed: {e}")
+        
         try:
             # 启动tmate进程 - 分离模式，后台运行
             self.tmate_process = subprocess.Popen(
