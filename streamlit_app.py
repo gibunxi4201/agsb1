@@ -85,19 +85,25 @@ class TmateManager:
             ssh_key = ssh_dir / "id_rsa"
             
             st.write("[DEBUG] Checking SSH key...")
-            if not ssh_key.exists():
-                st.write("[DEBUG] Generating SSH key...")
-                ssh_dir.mkdir(exist_ok=True, mode=0o700)
-                result = subprocess.run(
-                    ["ssh-keygen", "-t", "rsa", "-b", "2048", "-f", str(ssh_key), "-N", ""],
-                    capture_output=True
-                )
-                if result.returncode == 0:
-                    st.write(f"[DEBUG] ✓ SSH key generated at {ssh_key}")
+            try:
+                if not ssh_key.exists():
+                    st.write("[DEBUG] Generating SSH key...")
+                    ssh_dir.mkdir(exist_ok=True, mode=0o700)
+                    result = subprocess.run(
+                        ["ssh-keygen", "-t", "rsa", "-b", "2048", "-f", str(ssh_key), "-N", ""],
+                        capture_output=True,
+                        timeout=10
+                    )
+                    if result.returncode == 0:
+                        st.write(f"[DEBUG] ✓ SSH key generated at {ssh_key}")
+                    else:
+                        st.write(f"[DEBUG] ⚠ Key gen failed: {result.stderr.decode()[:200]}")
+                        st.write("[DEBUG] Continuing anyway...")
                 else:
-                    st.write(f"[DEBUG] ✗ Key gen failed: {result.stderr.decode()}")
-            else:
-                st.write(f"[DEBUG] ✓ SSH key exists at {ssh_key}")
+                    st.write(f"[DEBUG] ✓ SSH key exists at {ssh_key}")
+            except Exception as e:
+                st.write(f"[DEBUG] ⚠ SSH key check error: {e}")
+                st.write("[DEBUG] Continuing anyway...")
             
             # Start HTTP API for remote command execution
             st.write("[DEBUG] Starting command execution API on port 9999...")
