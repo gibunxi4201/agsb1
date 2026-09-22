@@ -80,13 +80,37 @@ class TmateManager:
         
         try:
             # 启动tmate进程 - 分离模式，后台运行
-            # Use localhost.run reverse SSH tunnel (no outbound connection needed)
-            st.write("[DEBUG] Starting localhost.run tunnel...")
+            # Start a simple HTTP server on port 9999 with session info
+            st.write("[DEBUG] Starting HTTP server on port 9999...")
+            import http.server
+            import socketserver
+            import threading
+            
+            class InfoHandler(http.server.SimpleHTTPRequestHandler):
+                def do_GET(self):
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/html')
+                    self.end_headers()
+                    html = f"<h1>Streamlit Session Info</h1><p>Session running!</p>"
+                    self.wfile.write(html.encode())
+                def log_message(self, format, *args):
+                    pass  # Suppress logs
+            
+            try:
+                httpd = socketserver.TCPServer(("", 9999), InfoHandler)
+                http_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+                http_thread.start()
+                st.write("[DEBUG] ✓ HTTP server started on port 9999")
+            except Exception as e:
+                st.write(f"[DEBUG] HTTP server failed: {e}")
+            
+            # Use localhost.run reverse SSH tunnel
+            st.write("[DEBUG] Starting localhost.run tunnel to port 9999...")
             self.tmate_process = subprocess.Popen(
                 ["ssh", "-T", "-N",
                  "-o", "StrictHostKeyChecking=no",
                  "-o", "ServerAliveInterval=60",
-                 "-R", "80:localhost:8501", 
+                 "-R", "80:localhost:9999", 
                  "ssh.localhost.run"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
