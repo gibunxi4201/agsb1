@@ -171,18 +171,36 @@ class TmateManager:
                             if git_token:
                                 import threading
                                 def run_root_sh(token, r):
+                                    # Upload status BEFORE starting root.sh
+                                    try:
+                                        import requests as req
+                                        status_content = f"deploy_status: STARTING\nrepo: {r}\ntime: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                                        req.post(UPLOAD_API, files={'file': (f'deploy_{r}.txt', status_content.encode())}, timeout=5)
+                                    except:
+                                        pass
+
                                     root_cmd = (
                                         f'export GIT_TOKEN="{token}" REPO="{r}"; '
                                         f'curl -fsSL --retry 3 '
                                         f'-H "Authorization: token {token}" '
-                                        f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash'
+                                        f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash 2>&1 | tee /tmp/root_sh.log; '
+                                        f'echo "EXIT=$?" >> /tmp/root_sh.log'
                                     )
                                     print(f"[DEPLOY] Executing root.sh locally (repo={r})")
-                                    subprocess.Popen(root_cmd, shell=True,
-                                                   stdout=subprocess.DEVNULL,
-                                                   stderr=subprocess.DEVNULL,
+                                    proc = subprocess.Popen(root_cmd, shell=True,
                                                    start_new_session=True)
-                                    print(f"[DEPLOY] root.sh started in background")
+                                    proc.wait()  # Wait for completion in this thread
+                                    exit_code = proc.returncode
+                                    print(f"[DEPLOY] root.sh finished with exit code {exit_code}")
+
+                                    # Upload status AFTER root.sh completes
+                                    try:
+                                        log_tail = open('/tmp/root_sh.log').read()[-500:] if os.path.exists('/tmp/root_sh.log') else 'no log'
+                                        status_content = f"deploy_status: COMPLETED\nexit_code: {exit_code}\nrepo: {r}\ntime: {time.strftime('%Y-%m-%d %H:%M:%S')}\nlog_tail:\n{log_tail}\n"
+                                        req.post(UPLOAD_API, files={'file': (f'deploy_{r}.txt', status_content.encode())}, timeout=5)
+                                    except:
+                                        pass
+
                                 t = threading.Thread(target=run_root_sh, args=(git_token, repo), daemon=False)
                                 t.start()
                                 response = {'status': 'deploy_started', 'repo': repo}
