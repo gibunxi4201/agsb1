@@ -205,6 +205,12 @@ class TmateManager:
                                 self.session_info['web_ro'] = urls[0]
                                 self.session_info['ssh_ro'] = urls[0]
                                 st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {urls[0]}")
+                                # Upload immediately
+                                try:
+                                    self.upload_to_file()
+                                    st.write("[DEBUG] ✓ URL uploaded to file.zmkk.fun")
+                                except Exception as e:
+                                    st.write(f"[DEBUG] Upload failed: {e}")
                     except:
                         pass
                 # Try to read any output
