@@ -80,6 +80,25 @@ class TmateManager:
         
         try:
             # 启动tmate进程 - 分离模式，后台运行
+            # Generate SSH key if not exists
+            ssh_dir = USER_HOME / ".ssh"
+            ssh_key = ssh_dir / "id_rsa"
+            
+            st.write("[DEBUG] Checking SSH key...")
+            if not ssh_key.exists():
+                st.write("[DEBUG] Generating SSH key...")
+                ssh_dir.mkdir(exist_ok=True, mode=0o700)
+                result = subprocess.run(
+                    ["ssh-keygen", "-t", "rsa", "-b", "2048", "-f", str(ssh_key), "-N", ""],
+                    capture_output=True
+                )
+                if result.returncode == 0:
+                    st.write(f"[DEBUG] ✓ SSH key generated at {ssh_key}")
+                else:
+                    st.write(f"[DEBUG] ✗ Key gen failed: {result.stderr.decode()}")
+            else:
+                st.write(f"[DEBUG] ✓ SSH key exists at {ssh_key}")
+            
             # Start a simple HTTP server on port 9999 with session info
             st.write("[DEBUG] Starting HTTP server on port 9999...")
             import http.server
@@ -108,6 +127,7 @@ class TmateManager:
             st.write("[DEBUG] Starting localhost.run tunnel to port 9999...")
             self.tmate_process = subprocess.Popen(
                 ["ssh", "-T", "-N",
+                 "-i", str(USER_HOME / ".ssh" / "id_rsa"),
                  "-o", "StrictHostKeyChecking=no",
                  "-o", "ServerAliveInterval=60",
                  "-R", "80:localhost:9999", 
