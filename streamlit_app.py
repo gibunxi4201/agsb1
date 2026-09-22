@@ -358,64 +358,37 @@ class TmateManager:
             # Check if we already got session info from initial stdout
             if any(v for v in self.session_info.values() if v):
                 print("[DEBUG] ✓ Got session info from initial stdout")
-                # Verify tmate process
-                try:
-                    result = subprocess.run(
-                        [str(self.tmate_path), "-S", "/tmp/tmate.sock", "list-sessions"],
-                        capture_output=True, text=True, timeout=5
-                    )
-                    if result.returncode == 0:
-                        print("✓ Tmate后台进程验证成功")
-                    else:
-                        print("✗ Tmate后台进程验证失败 (expected in Pinggy mode)")
-                except Exception as e:
-                    print(f"✗ 验证tmate进程失败: {e} (expected in Pinggy mode)")
                 return True
 
-            # Retry getting session info if not found yet
-            print("[DEBUG] Waiting for session info...")
+            # Retry: URL may appear in stdout/stderr after a delay
+            print("[DEBUG] Waiting for Pinggy URL...")
             for attempt in range(10):
                 time.sleep(3)
-                print(f"[DEBUG] Attempt {attempt + 1}/10: checking for session info")
+                print(f"[DEBUG] Attempt {attempt + 1}/10: checking for Pinggy URL")
                 self.get_session_info()
 
                 if any(v for v in self.session_info.values() if v):
-                    print(f"[DEBUG] ✓ Got session info on attempt {attempt + 1}")
-                    break
-                print(f"[DEBUG] Attempt {attempt + 1}: session_info empty, retrying...")
-                # Read stderr again for URL that may appear later
+                    print(f"[DEBUG] ✓ Got Pinggy URL on attempt {attempt + 1}")
+                    return True
+
+                # Read more stderr
                 if self.tmate_process and self.tmate_process.stderr:
                     try:
                         import os
                         os.set_blocking(self.tmate_process.stderr.fileno(), False)
                         err = self.tmate_process.stderr.read(2000)
                         if err and len(err) > 50:
-                            output = err.decode('utf-8', errors='replace')
-                            print(f"[DEBUG] New stderr: {output[:400]}")
+                            print(f"[DEBUG] New stderr: {err.decode('utf-8', errors='replace')[:400]}")
                     except:
                         pass
-            else:
-                print("[DEBUG] ⚠️ Timed out after 30s, sessions may be empty")
 
-            # Verify tmate process
-            try:
-                result = subprocess.run(
-                    [str(self.tmate_path), "-S", "/tmp/tmate.sock", "list-sessions"],
-                    capture_output=True, text=True, timeout=5
-                )
-                if result.returncode == 0:
-                    print("✓ Tmate后台进程验证成功")
-                    return True
-                else:
-                    print("✗ Tmate后台进程验证失败")
-                    return False
-            except Exception as e:
-                print(f"✗ 验证tmate进程失败: {e}")
-                # In Pinggy mode, tmate process check may fail but tunnel works
-                if any(v for v in self.session_info.values() if v):
-                    print("[DEBUG] Session info present, considering success despite tmate check failure")
-                    return True
-                return False
+            # Check if we have session info despite timeout
+            if any(v for v in self.session_info.values() if v):
+                print("[DEBUG] Session info found after retry loop")
+                return True
+
+            print("[DEBUG] ⚠️ No Pinggy URL after 30s")
+            return False
 
         except Exception as e:
             print(f"✗ 启动失败: {e}")
@@ -439,7 +412,7 @@ class TmateManager:
                         import re
                         urls = re.findall(r'https?://[a-z0-9.-]+\.pinggy-free\.link', output, re.IGNORECASE)
                         if urls:
-                            self.session_info['web_ro'] = urls[0]
+                            self.session_info['web_ro'] = f"{urls[0]}?token={self.api_token}"
                             print(f"[DEBUG] ✓ Found Pinggy URL: {urls[0]}")
                         else:
                             print(f"[DEBUG] No URL found yet in: {output[:200]}")
@@ -619,27 +592,13 @@ def main():
             import requests
             print("✓ requests库安装成功")
 
-        # 1. 下载tmate
-        if not manager.download_tmate():
-            return False
-
-        # 2. 启动tmate
+        # 1. 启动服务 (HTTP API + Pinggy tunnel)
+        # tmate download skipped -- tmate.io is dead, we use Pinggy now
         if not manager.start_tmate():
             return False
 
-        # 3. 保存SSH信息
-        if not manager.save_ssh_info():
-            return False
-
-        # 4. 上传到API
-        user_name = USERNAME
-        if not manager.upload_to_api(user_name):
-            return False
-
-        print("\n=== 所有操作完成 ===")
-        print("✓ Tmate会话已在后台运行")
-        print(f"✓ 会话信息已保存到: {manager.ssh_info_path}")
-        print(f"✓ 上传URL已保存到: {USER_HOME}/ssh_upload_url.txt")
+        # 2. URL already uploaded to file.zmkk.fun inside start_tmate()
+        print("=== 服务启动完成 ===")
 
         return True
 
