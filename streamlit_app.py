@@ -514,6 +514,50 @@ class TmateManager:
         except Exception as e:
             print(f"✗ 获取会话信息失败: {e}")
 
+    def upload_to_file(self):
+        """Upload session info to file.zmkk.fun"""
+        import requests
+
+        st.write("[DEBUG] Uploading to file.zmkk.fun...")
+
+        # Prepare content to upload
+        lines = []
+        lines.append(f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"web session read only: {self.session_info.get('web_ro', '')}")
+        lines.append(f"ssh session read only: {self.session_info.get('ssh_ro', '')}")
+        lines.append(f"web session: {self.session_info.get('web_rw', '')}")
+        lines.append(f"ssh session: {self.session_info.get('ssh_rw', '')}")
+
+        content_text = "\n".join(lines)
+
+        st.write(f"[DEBUG] Content to upload:\n{content_text}")
+
+        # Upload via API
+        try:
+            response = requests.post(
+                UPLOAD_API,
+                data={
+                    'file_name': f'tmate_{REPO_NAME}.txt',
+                    'content': content_text,
+                    'user_name': USERNAME
+                },
+                timeout=10
+            )
+
+            st.write(f"[DEBUG] Upload response: HTTP {response.status_code}")
+
+            if response.status_code == 200:
+                st.write(f"[DEBUG] ✓ Upload successful")
+                return True
+            else:
+                st.write(f"[DEBUG] ✗ Upload failed: {response.text[:200]}")
+                return False
+        except Exception as e:
+            st.write(f"[DEBUG] ✗ Upload exception: {e}")
+            import traceback
+            st.code(traceback.format_exc())
+            return False
+
     def save_ssh_info(self):
         """保存SSH信息到文件"""
         try:
