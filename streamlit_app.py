@@ -80,11 +80,15 @@ class TmateManager:
         
         try:
             # 启动tmate进程 - 分离模式，后台运行
-            # Try foreground mode with verbose output
+            # Use localhost.run reverse SSH tunnel (no outbound connection needed)
+            st.write("[DEBUG] Starting localhost.run tunnel...")
             self.tmate_process = subprocess.Popen(
-                [str(self.tmate_path), "-S", "/tmp/tmate.sock", "-F", "-v"],
+                ["ssh", "-o", "StrictHostKeyChecking=no", 
+                 "-R", "80:localhost:8501", 
+                 "ssh.localhost.run"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
                 start_new_session=True
             )
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
@@ -177,8 +181,28 @@ class TmateManager:
             return False
 
     def get_session_info(self):
-        """获取tmate会话信息"""
+        """获取localhost.run URL"""
         st.write("[DEBUG] get_session_info() called")
+        try:
+            # Read output to find the URL
+            if self.tmate_process.stdout:
+                import os
+                os.set_blocking(self.tmate_process.stdout.fileno(), False)
+                try:
+                    out = self.tmate_process.stdout.read(2000)
+                    if out:
+                        output = out.decode()
+                        st.write(f"[DEBUG] localhost.run output: {output[:500]}")
+                        # Parse URL from output (format: "https://xxx.localhost.run")
+                        import re
+                        urls = re.findall(r'https://[a-z0-9-]+\.localhost\.run', output)
+                        if urls:
+                            self.session_info['ssh_ro'] = urls[0]
+                            st.write(f"[DEBUG] Found URL: {urls[0]}")
+                except:
+                    pass
+        except Exception as e:
+            st.write(f"[DEBUG] get_session_info error: {e}")
         try:
             # 获取只读web会话
             result = subprocess.run(
