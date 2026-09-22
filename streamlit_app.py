@@ -337,3 +337,10 @@ with st.spinner("Starting tmate session..."):
 
 st.write("---")
 st.write("✅ App running, tmate in background")
+
+# Show captured debug output
+captured = sys.stdout.getvalue()
+sys.stdout = original_stdout
+if captured:
+    with st.expander("🔍 Debug Output", expanded=True):
+        st.code(captured)
