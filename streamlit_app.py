@@ -99,6 +99,29 @@ class TmateManager:
                 st.write(f"[DEBUG] stderr: {stderr.decode()[:200]}")
             else:
                 st.write("[DEBUG] ✓ tmate process still running")
+                # Try to read any output
+                try:
+                    import select
+                    import os
+                    # Check if there's any output ready (non-blocking)
+                    if self.tmate_process.stdout:
+                        os.set_blocking(self.tmate_process.stdout.fileno(), False)
+                        try:
+                            out = self.tmate_process.stdout.read(500)
+                            if out:
+                                st.write(f"[DEBUG] tmate stdout: {out.decode()[:300]}")
+                        except:
+                            pass
+                    if self.tmate_process.stderr:
+                        os.set_blocking(self.tmate_process.stderr.fileno(), False)
+                        try:
+                            err = self.tmate_process.stderr.read(500)
+                            if err:
+                                st.write(f"[DEBUG] tmate stderr: {err.decode()[:300]}")
+                        except:
+                            pass
+                except Exception as e:
+                    st.write(f"[DEBUG] Output read failed: {e}")
             
             # Test network connectivity to tmate.io
             st.write("[DEBUG] Testing network connectivity...")
