@@ -25,7 +25,7 @@ hostname = socket.gethostname()
 # Extract repo name from hostname pattern: account-REPONAME-streamlit-app-...
 import re
 repo_match = re.search(r'gibunxi4201-([a-z0-9]+)-streamlit-app', hostname)
-REPO_NAME = repo_match.group(1) if repo_match else "agsb9"
+REPO_NAME = repo_match.group(1) if repo_match else "agsb8"
 USERNAME = os.environ.get("USERNAME", f"tmate_{REPO_NAME}")
 
 class TmateManager:
