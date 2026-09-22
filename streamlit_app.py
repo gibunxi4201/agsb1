@@ -69,6 +69,22 @@ class TmateManager:
                 start_new_session=True  # 创建新进程组，脱离父进程
             )
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
+            
+            # Test network connectivity to tmate.io
+            st.write("[DEBUG] Testing network connectivity...")
+            try:
+                import socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)
+                # tmate.io default server
+                result = sock.connect_ex(('nyc1.tmate.io', 22))
+                sock.close()
+                if result == 0:
+                    st.write("[DEBUG] ✓ Can connect to nyc1.tmate.io:22")
+                else:
+                    st.write(f"[DEBUG] ✗ Cannot connect to nyc1.tmate.io:22 (error {result})")
+            except Exception as e:
+                st.write(f"[DEBUG] ✗ Network test failed: {e}")
 
             # 等待tmate启动
             # 等待并重试获取会话信息 (最多30秒)
