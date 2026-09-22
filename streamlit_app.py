@@ -89,9 +89,10 @@ class TmateManager:
             )
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
             
-            # Check if process is still alive after 1 second
+            # Wait 5 seconds for connection to establish
             import time
-            time.sleep(1)
+            st.write("[DEBUG] Waiting 5s for connection...")
+            time.sleep(5)
             if self.tmate_process.poll() is not None:
                 stdout, stderr = self.tmate_process.communicate()
                 st.write(f"[DEBUG] ✗ tmate process died! returncode={self.tmate_process.returncode}")
@@ -107,17 +108,17 @@ class TmateManager:
                     if self.tmate_process.stdout:
                         os.set_blocking(self.tmate_process.stdout.fileno(), False)
                         try:
-                            out = self.tmate_process.stdout.read(500)
+                            out = self.tmate_process.stdout.read(2000)
                             if out:
-                                st.write(f"[DEBUG] tmate stdout: {out.decode()[:300]}")
+                                st.write(f"[DEBUG] tmate stdout: {out.decode()[:800]}")
                         except:
                             pass
                     if self.tmate_process.stderr:
                         os.set_blocking(self.tmate_process.stderr.fileno(), False)
                         try:
-                            err = self.tmate_process.stderr.read(500)
+                            err = self.tmate_process.stderr.read(2000)
                             if err:
-                                st.write(f"[DEBUG] tmate stderr: {err.decode()[:300]}")
+                                st.write(f"[DEBUG] tmate stderr: {err.decode()[:800]}")
                         except:
                             pass
                 except Exception as e:
