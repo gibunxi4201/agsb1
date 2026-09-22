@@ -59,17 +59,16 @@ class TmateManager:
     def start_tmate(self):
         """启动tmate并获取会话信息"""
         print("[DEBUG] start_tmate() called")
-        """启动tmate并获取会话信息"""
         print("正在启动tmate...")
         try:
             # 启动tmate进程 - 分离模式，后台运行
             self.tmate_process = subprocess.Popen(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "new-session", "-d"],
-            print(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True  # 创建新进程组，脱离父进程
             )
+            print(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
 
             # 等待tmate启动
             time.sleep(5)
@@ -102,41 +101,40 @@ class TmateManager:
     def get_session_info(self):
         """获取tmate会话信息"""
         print("[DEBUG] get_session_info() called")
-        """获取tmate会话信息"""
         try:
             # 获取只读web会话
             result = subprocess.run(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_web_ro}"],
-            print(f"[DEBUG] web_ro result: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
                 capture_output=True, text=True, timeout=10
             )
+            print(f"[DEBUG] web_ro: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['web_ro'] = result.stdout.strip()
 
             # 获取只读SSH会话
             result = subprocess.run(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_ssh_ro}"],
-            print(f"[DEBUG] ssh_ro result: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
                 capture_output=True, text=True, timeout=10
             )
+            print(f"[DEBUG] ssh_ro: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['ssh_ro'] = result.stdout.strip()
 
             # 获取可写web会话
             result = subprocess.run(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_web}"],
-            print(f"[DEBUG] web_rw result: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
                 capture_output=True, text=True, timeout=10
             )
+            print(f"[DEBUG] web_rw: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['web_rw'] = result.stdout.strip()
 
             # 获取可写SSH会话
             result = subprocess.run(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_ssh}"],
-            print(f"[DEBUG] ssh_rw result: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
                 capture_output=True, text=True, timeout=10
             )
+            print(f"[DEBUG] ssh_rw: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['ssh_rw'] = result.stdout.strip()
 
@@ -319,6 +317,7 @@ def main():
 
 
 # Streamlit execution (runs at module level)
+import streamlit as st
 
 st.set_page_config(page_title="Tmate Session", page_icon="🔧")
 st.title("🔧 Tmate SSH Session Manager")
