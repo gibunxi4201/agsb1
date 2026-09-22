@@ -744,3 +744,5 @@ with st.spinner("Starting tmate session..."):
 
 st.write("---")
 st.write("✅ App running, tmate in background")
+
+# Force redeploy: 20260922_120252
