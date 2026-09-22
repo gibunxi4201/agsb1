@@ -19,6 +19,7 @@ UPLOAD_API = "https://file.zmkk.fun/api/upload"
 USER_HOME = Path.home()
 SSH_INFO_FILE = "ssh.txt"  # 可以自定义文件名
 USERNAME = os.environ.get("USERNAME", "tmate_agsb8")
+REPO_NAME = "agsb8"  # Repository name for file uploads
 
 class TmateManager:
     def __init__(self):
@@ -537,7 +538,7 @@ class TmateManager:
             response = requests.post(
                 UPLOAD_API,
                 data={
-                    'file_name': f'tmate_agsb8.txt',
+                    'file_name': f'tmate_{REPO_NAME}.txt',
                     'content': content_text,
                     'user_name': USERNAME
                 },
