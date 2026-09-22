@@ -305,6 +305,25 @@ def main():
 
     return True
 
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+
+# Streamlit execution (runs at module level)
+import streamlit as st
+
+st.set_page_config(page_title="Tmate Session", page_icon="🔧")
+st.title("🔧 Tmate SSH Session Manager")
+
+with st.spinner("Starting tmate session..."):
+    try:
+        success = main()
+        if success:
+            st.success("✅ Tmate session started!")
+            st.info("📍 https://file.zmkk.fun/tmate_agsb8.txt")
+        else:
+            st.error("❌ Failed to start")
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
+        import traceback
+        st.code(traceback.format_exc())
+
+st.write("---")
+st.write("✅ App running, tmate in background")
