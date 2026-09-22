@@ -124,18 +124,24 @@ class TmateManager:
                 st.write(f"[DEBUG] HTTP server failed: {e}")
             
             # Use localhost.run reverse SSH tunnel
-            st.write("[DEBUG] Starting Pinggy tunnel to port 9999...")
+            st.write("[DEBUG] Starting Pinggy tunnel to port 9999... (using free.pinggy.io)")
             self.tmate_process = subprocess.Popen(
-                ["ssh", "-p", "443", "-T", "-N",
+                ["ssh", "-p", "443",
                  "-o", "StrictHostKeyChecking=no",
                  "-o", "ServerAliveInterval=60",
+                 "-o", "BatchMode=no",
                  "-R0:localhost:9999", 
-                 "a.pinggy.io"],
+                 "free.pinggy.io"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE,
                 start_new_session=True
             )
+            # Send empty password if prompted
+            if self.tmate_process.stdin:
+                self.tmate_process.stdin.write(b"\n")
+                self.tmate_process.stdin.flush()
+                st.write("[DEBUG] Sent empty password to Pinggy")
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
             
             # Wait 5 seconds for connection to establish
@@ -262,7 +268,7 @@ class TmateManager:
                         # Parse URL from output (format varies)
                         import re
                         # Pinggy format: https://randomid-2.a.free.pinggy.link or similar
-                        urls = re.findall(r'https?://[a-z0-9.-]+\.pinggy\.[a-z]+(?::[0-9]+)?', output, re.IGNORECASE)
+                        urls = re.findall(r'https?://[a-z0-9.-]+\.pinggy-free\.link', output, re.IGNORECASE)
                         if urls:
                             self.session_info['web_ro'] = urls[0]
                             st.write(f"[DEBUG] ✓ Found Pinggy URL: {urls[0]}")
