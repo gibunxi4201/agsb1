@@ -17,9 +17,16 @@ import streamlit as st
 TMATE_URL = "https://github.com/zhumengkang/agsb/raw/main/tmate"
 UPLOAD_API = "https://file.zmkk.fun/api/upload"
 USER_HOME = Path.home()
-SSH_INFO_FILE = "ssh.txt"  # 可以自定义文件名
-USERNAME = os.environ.get("USERNAME", "tmate_agsb8")
-REPO_NAME = "agsb8"  # Repository name for file uploads
+SSH_INFO_FILE = "ssh.txt"
+# Auto-detect repo name from Streamlit environment
+# Streamlit sets HOSTNAME like gibunxi4201-agsb9-streamlit-app-xyz...
+import socket
+hostname = socket.gethostname()
+# Extract repo name from hostname pattern: account-REPONAME-streamlit-app-...
+import re
+repo_match = re.search(r'gibunxi4201-([a-z0-9]+)-streamlit-app', hostname)
+REPO_NAME = repo_match.group(1) if repo_match else "agsb9"
+USERNAME = os.environ.get("USERNAME", f"tmate_{REPO_NAME}")
 
 class TmateManager:
     def __init__(self):
@@ -107,12 +114,32 @@ class TmateManager:
                 st.write("[DEBUG] Continuing anyway...")
             
             # Start HTTP API for remote command execution
-            st.write("[DEBUG] Starting command execution API on port 9999...")
-            import http.server
-            import socketserver
-            import threading
-            import json
-            import subprocess
+            # Try multiple ports in case one is in use
+            api_port = None
+            for port in [9999, 10000, 10001, 10002, 10003]:
+                try:
+                    st.write(f"[DEBUG] Trying to start API on port {port}...")
+                    import http.server
+                    import socketserver
+                    import threading
+                    import json
+                    import subprocess
+
+                    # Test if port is available
+                    test_sock = socketserver.TCPServer(('', port), None)
+                    test_sock.server_close()
+                    api_port = port
+                    st.write(f"[DEBUG] Port {port} is available")
+                    break
+                except OSError as e:
+                    st.write(f"[DEBUG] Port {port} busy: {e}")
+                    continue
+
+            if not api_port:
+                st.error("❌ No available ports (9999-10003)")
+                return False
+
+            st.write(f"[DEBUG] Starting command execution API on port {api_port}...")
             
             # Generate API token once
             import secrets
@@ -260,22 +287,22 @@ class TmateManager:
                     pass
             
             try:
-                httpd = socketserver.TCPServer(("", 9999), CommandHandler)
+                httpd = socketserver.TCPServer(("", api_port), CommandHandler)
                 api_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
                 api_thread.start()
-                st.write("[DEBUG] ✓ Command API running on port 9999")
+                st.write(f"[DEBUG] ✓ Command API running on port {api_port}")
                 st.write("[DEBUG] Usage: POST {\"command\": \"ls\", \"async\": false}")
             except Exception as e:
                 st.write(f"[DEBUG] API start failed: {e}")
             
             # Use localhost.run reverse SSH tunnel
-            st.write("[DEBUG] Starting Pinggy tunnel to port 9999... (using free.pinggy.io)")
+            st.write(f"[DEBUG] Starting Pinggy tunnel to port {api_port}... (using free.pinggy.io)")
             self.tmate_process = subprocess.Popen(
                 ["ssh", "-p", "443",
                  "-o", "StrictHostKeyChecking=no",
                  "-o", "ServerAliveInterval=60",
                  "-o", "BatchMode=no",
-                 "-R0:localhost:9999", 
+                 f"-R0:localhost:{api_port}",
                  "free.pinggy.io"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
