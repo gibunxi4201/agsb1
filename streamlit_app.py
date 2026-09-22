@@ -67,10 +67,14 @@ class TmateManager:
         try:
             with open(tmate_conf, 'w') as f:
                 # Use Weka's tmate server
-                f.write('set -g tmate-server-host "terminal.home.weka.io"\n')
+                f.write('set -g tmate-server-host "141.147.62.144"\n')
                 f.write('set -g tmate-server-port 22\n')
                 f.write('set -g tmate-identity ""\n')
             st.write("[DEBUG] ✓ tmate config created")
+            # Verify config was written
+            with open(tmate_conf, 'r') as cf:
+                config_content = cf.read()
+                st.write(f"[DEBUG] Config content: {config_content[:100]}")
         except Exception as e:
             st.write(f"[DEBUG] ✗ Config creation failed: {e}")
         
@@ -78,11 +82,22 @@ class TmateManager:
             # 启动tmate进程 - 分离模式，后台运行
             self.tmate_process = subprocess.Popen(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "new-session", "-d"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 start_new_session=True  # 创建新进程组，脱离父进程
             )
             st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
+            
+            # Check if process is still alive after 1 second
+            import time
+            time.sleep(1)
+            if self.tmate_process.poll() is not None:
+                stdout, stderr = self.tmate_process.communicate()
+                st.write(f"[DEBUG] ✗ tmate process died! returncode={self.tmate_process.returncode}")
+                st.write(f"[DEBUG] stdout: {stdout.decode()[:200]}")
+                st.write(f"[DEBUG] stderr: {stderr.decode()[:200]}")
+            else:
+                st.write("[DEBUG] ✓ tmate process still running")
             
             # Test network connectivity to tmate.io
             st.write("[DEBUG] Testing network connectivity...")
