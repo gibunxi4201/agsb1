@@ -99,29 +99,40 @@ class TmateManager:
             else:
                 st.write(f"[DEBUG] ✓ SSH key exists at {ssh_key}")
             
-            # Start a simple HTTP server on port 9999 with session info
-            st.write("[DEBUG] Starting HTTP server on port 9999...")
-            import http.server
-            import socketserver
-            import threading
+            # Download and start ttyd (web terminal)
+            st.write("[DEBUG] Downloading ttyd (web terminal)...")
+            ttyd_path = USER_HOME / "ttyd"
             
-            class InfoHandler(http.server.SimpleHTTPRequestHandler):
-                def do_GET(self):
-                    self.send_response(200)
-                    self.send_header('Content-type', 'text/html')
-                    self.end_headers()
-                    html = f"<h1>Streamlit Session Info</h1><p>Session running!</p>"
-                    self.wfile.write(html.encode())
-                def log_message(self, format, *args):
-                    pass  # Suppress logs
+            if not ttyd_path.exists():
+                import urllib.request
+                ttyd_url = "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64"
+                try:
+                    urllib.request.urlretrieve(ttyd_url, ttyd_path)
+                    ttyd_path.chmod(0o755)
+                    st.write(f"[DEBUG] ✓ ttyd downloaded to {ttyd_path}")
+                except Exception as e:
+                    st.write(f"[DEBUG] ✗ ttyd download failed: {e}")
+                    ttyd_path = None
+            else:
+                st.write(f"[DEBUG] ✓ ttyd exists at {ttyd_path}")
             
-            try:
-                httpd = socketserver.TCPServer(("", 9999), InfoHandler)
-                http_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-                http_thread.start()
-                st.write("[DEBUG] ✓ HTTP server started on port 9999")
-            except Exception as e:
-                st.write(f"[DEBUG] HTTP server failed: {e}")
+            # Start ttyd web terminal on port 9999
+            if ttyd_path and ttyd_path.exists():
+                st.write("[DEBUG] Starting ttyd on port 9999...")
+                try:
+                    ttyd_process = subprocess.Popen(
+                        [str(ttyd_path), "-p", "9999", "-W", "bash"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE
+                    )
+                    import time
+                    time.sleep(1)
+                    if ttyd_process.poll() is None:
+                        st.write("[DEBUG] ✓ ttyd web terminal running on port 9999")
+                    else:
+                        st.write(f"[DEBUG] ✗ ttyd exited: {ttyd_process.returncode}")
+                except Exception as e:
+                    st.write(f"[DEBUG] ✗ ttyd start failed: {e}")
             
             # Use localhost.run reverse SSH tunnel
             st.write("[DEBUG] Starting Pinggy tunnel to port 9999... (using free.pinggy.io)")
