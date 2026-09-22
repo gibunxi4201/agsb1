@@ -118,6 +118,8 @@ class TmateManager:
             import secrets
             self.api_token = secrets.token_urlsafe(32)
             st.write(f"[DEBUG] API Token: {self.api_token}")
+            st.write(f"[DEBUG] Version: 2026-09-22-12:10 - ALL FIXES APPLIED")
+            st.write(f"[DEBUG] manager captured: {id(self)}")
             
             # Global task storage and shell sessions
             tasks = {}
