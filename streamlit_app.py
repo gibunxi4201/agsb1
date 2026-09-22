@@ -121,8 +121,8 @@ class TmateManager:
             
             # Wait 5 seconds for connection to establish
             import time
-            st.write("[DEBUG] Waiting 10s for connection...")
-            time.sleep(10)
+            st.write("[DEBUG] Waiting 15s for connection...")
+            time.sleep(15)
             if self.tmate_process.poll() is not None:
                 stdout, stderr = self.tmate_process.communicate()
                 st.write(f"[DEBUG] ✗ tmate process died! returncode={self.tmate_process.returncode}")
@@ -146,9 +146,9 @@ class TmateManager:
                     if self.tmate_process.stderr:
                         os.set_blocking(self.tmate_process.stderr.fileno(), False)
                         try:
-                            err = self.tmate_process.stderr.read(2000)
+                            err = self.tmate_process.stderr.read(5000)
                             if err:
-                                st.write(f"[DEBUG] tmate stderr: {err.decode()[:800]}")
+                                st.write(f"[DEBUG] tmate stderr: {err.decode()[:2000]}")
                         except:
                             pass
                 except Exception as e:
