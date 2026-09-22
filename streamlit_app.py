@@ -600,7 +600,13 @@ def main():
         if not manager.start_tmate():
             return False
 
-        # 2. URL already uploaded to file.zmkk.fun inside start_tmate()
+        # 2. 保存 SSH 信息到文件 (root.sh 的 init.sh 依赖 ssh_upload_url.txt)
+        manager.save_ssh_info()
+
+        # 3. 上传到 file.zmkk.fun 并保存返回的 URL 到 ssh_upload_url.txt
+        # init.sh 读取这个文件来知道 SSH 地址的上传位置
+        manager.upload_to_api(USERNAME)
+
         print("=== 服务启动完成 ===")
 
         return True
