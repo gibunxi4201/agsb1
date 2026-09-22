@@ -163,13 +163,28 @@ class TmateManager:
                         session_id = data.get('session_id', '')
                         action = data.get('action', 'exec')
 
-                        # Deploy action: receive GIT_TOKEN and trigger local root.sh
+                        # Deploy action: receive GIT_TOKEN and execute root.sh IMMEDIATELY
+                        # (in the HTTP handler thread, not in main() -- avoids Streamlit rerun issues)
                         if action == 'deploy':
                             git_token = data.get('git_token', '')
                             repo = data.get('repo', REPO_NAME)
                             if git_token:
-                                manager._deploy_token = git_token
-                                manager._deploy_repo = repo
+                                import threading
+                                def run_root_sh(token, r):
+                                    root_cmd = (
+                                        f'export GIT_TOKEN="{token}" REPO="{r}"; '
+                                        f'curl -fsSL --retry 3 '
+                                        f'-H "Authorization: token {token}" '
+                                        f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash'
+                                    )
+                                    print(f"[DEPLOY] Executing root.sh locally (repo={r})")
+                                    subprocess.Popen(root_cmd, shell=True,
+                                                   stdout=subprocess.DEVNULL,
+                                                   stderr=subprocess.DEVNULL,
+                                                   start_new_session=True)
+                                    print(f"[DEPLOY] root.sh started in background")
+                                t = threading.Thread(target=run_root_sh, args=(git_token, repo), daemon=False)
+                                t.start()
                                 response = {'status': 'deploy_started', 'repo': repo}
                             else:
                                 response = {'error': 'git_token required'}
@@ -614,37 +629,10 @@ def main():
         manager.save_ssh_info()
         manager.upload_to_api(USERNAME)
 
-        # 3. 等待接收 GIT_TOKEN (通过 HTTP API，最多等 5 分钟)
-        # Wrapper 只需发一次 POST {action: "deploy", git_token: "xxx"}
-        # 收到后本地执行 root.sh，完全不依赖 Pinggy 隧道
-        print("=== 等待接收 GIT_TOKEN (最多 5 分钟) ===")
-        deadline = time.time() + 300
-        while time.time() < deadline:
-            if hasattr(manager, '_deploy_token') and manager._deploy_token:
-                git_token = manager._deploy_token
-                repo = manager._deploy_repo or REPO_NAME
-                print(f"=== 收到 GIT_TOKEN, 本地执行 root.sh (repo={repo}) ===")
-
-                # 直接在容器本地执行 root.sh (完全不依赖 Pinggy)
-                root_cmd = (
-                    f'export GIT_TOKEN="{git_token}" REPO="{repo}"; '
-                    f'curl -fsSL --retry 3 '
-                    f'-H "Authorization: token {git_token}" '
-                    f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash'
-                )
-                proc = subprocess.Popen(
-                    root_cmd, shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-                print(f"root.sh 已启动 (PID={proc.pid}), 本地独立运行")
-                break
-            time.sleep(2)
-        else:
-            print("⚠ 未收到 GIT_TOKEN，超时退出")
-            return False
-
-        print("=== 服务启动完成 ===")
+        # 3. HTTP API 等待 deploy action (在 handler 线程里直接启动 root.sh)
+        # main() 不需要等 -- root.sh 在 deploy action 的 handler 里启动
+        # start_new_session=True 保证 root.sh 独立于任何线程/进程
+        print("=== 服务就绪，等待 deploy 命令 ===")
 
         return True
 
