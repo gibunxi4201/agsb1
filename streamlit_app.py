@@ -113,6 +113,9 @@ class TmateManager:
             import json
             import subprocess
             
+            # Global task storage
+            tasks = {}
+            
             class CommandHandler(http.server.BaseHTTPRequestHandler):
                 def do_POST(self):
                     content_length = int(self.headers.get('Content-Length', 0))
@@ -120,15 +123,49 @@ class TmateManager:
                     try:
                         data = json.loads(body)
                         cmd = data.get('command', '')
-                        if cmd:
-                            result = subprocess.run(cmd, shell=True, capture_output=True, timeout=30)
-                            response = {
-                                'stdout': result.stdout.decode('utf-8', errors='replace'),
-                                'stderr': result.stderr.decode('utf-8', errors='replace'),
-                                'returncode': result.returncode
-                            }
+                        async_mode = data.get('async', False)
+                        task_id = data.get('task_id', '')
+                        
+                        # Query async task result
+                        if task_id:
+                            if task_id in tasks:
+                                task = tasks[task_id]
+                                if task['proc'].poll() is None:
+                                    response = {'status': 'running', 'task_id': task_id}
+                                else:
+                                    stdout, stderr = task['proc'].communicate()
+                                    response = {
+                                        'status': 'completed',
+                                        'stdout': stdout.decode('utf-8', errors='replace'),
+                                        'stderr': stderr.decode('utf-8', errors='replace'),
+                                        'returncode': task['proc'].returncode
+                                    }
+                                    del tasks[task_id]
+                            else:
+                                response = {'error': 'Task not found'}
+                        # Execute command
+                        elif cmd:
+                            if async_mode:
+                                # Start background task
+                                proc = subprocess.Popen(cmd, shell=True, 
+                                                      stdout=subprocess.PIPE,
+                                                      stderr=subprocess.PIPE)
+                                task_id = str(len(tasks))
+                                tasks[task_id] = {'proc': proc, 'cmd': cmd}
+                                response = {'status': 'started', 'task_id': task_id}
+                            else:
+                                # Sync execution with 300s timeout
+                                result = subprocess.run(cmd, shell=True, 
+                                                      capture_output=True, timeout=300)
+                                response = {
+                                    'stdout': result.stdout.decode('utf-8', errors='replace'),
+                                    'stderr': result.stderr.decode('utf-8', errors='replace'),
+                                    'returncode': result.returncode
+                                }
                         else:
                             response = {'error': 'No command provided'}
+                    except subprocess.TimeoutExpired:
+                        response = {'error': 'Command timeout (300s)'}
                     except Exception as e:
                         response = {'error': str(e)}
                     
@@ -145,7 +182,7 @@ class TmateManager:
                 api_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
                 api_thread.start()
                 st.write("[DEBUG] ✓ Command API running on port 9999")
-                st.write("[DEBUG] Usage: POST {\"command\": \"ls -la\"}")
+                st.write("[DEBUG] Usage: POST {\"command\": \"ls\", \"async\": false}")
             except Exception as e:
                 st.write(f"[DEBUG] API start failed: {e}")
             
