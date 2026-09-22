@@ -163,8 +163,24 @@ class TmateManager:
                     st.write(f"[DEBUG] Failed to read output: {e}")
             else:
                 st.write("[DEBUG] ✓ SSH tunnel established!")
-                # Read more stderr for the full URL
-                time.sleep(2)  # Wait for URL output
+                # Pinggy outputs URL to STDOUT immediately, capture it now
+                if self.tmate_process.stdout:
+                    try:
+                        import os
+                        os.set_blocking(self.tmate_process.stdout.fileno(), False)
+                        out = self.tmate_process.stdout.read(2000)
+                        if out:
+                            output = out.decode('utf-8', errors='replace')
+                            st.write(f"[DEBUG] Initial stdout: {output[:600]}")
+                            # Parse and store URL immediately
+                            import re
+                            urls = re.findall(r'https://[a-z0-9-]+\.run\.pinggy-free\.link', output)
+                            if urls:
+                                self.session_info['web_ro'] = urls[0]
+                                self.session_info['ssh_ro'] = urls[0]
+                                st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {urls[0]}")
+                    except:
+                        pass
                 # Try to read any output
                 try:
                     import select
