@@ -211,7 +211,18 @@ class TmateManager:
                 if any(v for v in self.session_info.values() if v):
                     st.write(f"[DEBUG] ✓ Got session info on attempt {attempt + 1}")
                     break
-                st.write(f"[DEBUG] Attempt {attempt + 1}: session_info still empty, retrying...")
+                st.write(f"[DEBUG] Attempt {attempt + 1}: session_info empty, reading stderr again...")
+                # Read stderr again for URL that may appear later
+                if self.tmate_process and self.tmate_process.stderr:
+                    try:
+                        import os
+                        os.set_blocking(self.tmate_process.stderr.fileno(), False)
+                        err = self.tmate_process.stderr.read(2000)
+                        if err and len(err) > 50:  # New output
+                            output = err.decode('utf-8', errors='replace')
+                            st.write(f"[DEBUG] New stderr: {output[:400]}")
+                    except:
+                        pass
             else:
                 st.write("[DEBUG] ⚠️ Timed out after 30s, sessions may be empty")
 
