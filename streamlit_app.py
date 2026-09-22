@@ -66,8 +66,8 @@ class TmateManager:
         st.write(f"[DEBUG] Creating tmate config at {tmate_conf}")
         try:
             with open(tmate_conf, 'w') as f:
-                # Use Weka's tmate server (IP to bypass DNS)
-                f.write('set -g tmate-server-host "141.147.62.144"\n')
+                # Use Weka's tmate server
+                f.write('set -g tmate-server-host "terminal.home.weka.io"\n')
                 f.write('set -g tmate-server-port 22\n')
                 f.write('set -g tmate-identity ""\n')
             st.write("[DEBUG] ✓ tmate config created")
