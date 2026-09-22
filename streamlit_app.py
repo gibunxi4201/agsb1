@@ -10,6 +10,7 @@ import signal
 from pathlib import Path
 import requests
 from datetime import datetime, timedelta, timezone
+import streamlit as st
 
 
 # 配置
@@ -307,7 +308,6 @@ def main():
 
 
 # Streamlit execution (runs at module level)
-import streamlit as st
 
 st.set_page_config(page_title="Tmate Session", page_icon="🔧")
 st.title("🔧 Tmate SSH Session Manager")
