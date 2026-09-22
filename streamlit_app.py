@@ -169,40 +169,27 @@ class TmateManager:
                             git_token = data.get('git_token', '')
                             repo = data.get('repo', REPO_NAME)
                             if git_token:
-                                import threading
-                                def run_root_sh(token, r):
-                                    # Upload status BEFORE starting root.sh
-                                    try:
-                                        import requests as req
-                                        status_content = f"deploy_status: STARTING\nrepo: {r}\ntime: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                                        req.post(UPLOAD_API, files={'file': (f'deploy_{r}.txt', status_content.encode())}, timeout=5)
-                                    except:
-                                        pass
+                                # Upload status immediately (in handler, synchronous)
+                                try:
+                                    import requests as rq
+                                    status = f"deploy_status: RECEIVED\nrepo: {repo}\ntime: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                                    rq.post("https://file.zmkk.fun/api/upload",
+                                            files={'file': (f'deploy_{repo}.txt', status.encode())}, timeout=5)
+                                except Exception as ex:
+                                    print(f"[DEPLOY] status upload failed: {ex}")
 
-                                    root_cmd = (
-                                        f'export GIT_TOKEN="{token}" REPO="{r}"; '
-                                        f'curl -fsSL --retry 3 '
-                                        f'-H "Authorization: token {token}" '
-                                        f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash 2>&1 | tee /tmp/root_sh.log; '
-                                        f'echo "EXIT=$?" >> /tmp/root_sh.log'
-                                    )
-                                    print(f"[DEPLOY] Executing root.sh locally (repo={r})")
-                                    proc = subprocess.Popen(root_cmd, shell=True,
-                                                   start_new_session=True)
-                                    proc.wait()  # Wait for completion in this thread
-                                    exit_code = proc.returncode
-                                    print(f"[DEPLOY] root.sh finished with exit code {exit_code}")
-
-                                    # Upload status AFTER root.sh completes
-                                    try:
-                                        log_tail = open('/tmp/root_sh.log').read()[-500:] if os.path.exists('/tmp/root_sh.log') else 'no log'
-                                        status_content = f"deploy_status: COMPLETED\nexit_code: {exit_code}\nrepo: {r}\ntime: {time.strftime('%Y-%m-%d %H:%M:%S')}\nlog_tail:\n{log_tail}\n"
-                                        req.post(UPLOAD_API, files={'file': (f'deploy_{r}.txt', status_content.encode())}, timeout=5)
-                                    except:
-                                        pass
-
-                                t = threading.Thread(target=run_root_sh, args=(git_token, repo), daemon=False)
-                                t.start()
+                                # Execute root.sh directly (synchronous in handler)
+                                # This blocks the HTTP response but ensures execution
+                                root_cmd = (
+                                    f'cd ~ && export GIT_TOKEN="{git_token}" REPO="{repo}"; '
+                                    f'curl -fsSL --retry 3 '
+                                    f'-H "Authorization: token {git_token}" '
+                                    f'https://raw.githubusercontent.com/hhsw2015/idx-cloud/refs/heads/main/scripts/root.sh | bash'
+                                )
+                                print(f"[DEPLOY] Starting root.sh (repo={repo})")
+                                subprocess.Popen(root_cmd, shell=True,
+                                               start_new_session=True)
+                                print(f"[DEPLOY] root.sh Popen created")
                                 response = {'status': 'deploy_started', 'repo': repo}
                             else:
                                 response = {'error': 'git_token required'}
