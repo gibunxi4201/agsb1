@@ -113,6 +113,11 @@ class TmateManager:
             import json
             import subprocess
             
+            # Generate API token once
+            import secrets
+            API_TOKEN = secrets.token_urlsafe(32)
+            st.write(f"[DEBUG] API Token: {API_TOKEN}")
+            
             # Global task storage and shell sessions
             tasks = {}
             shells = {}  # session_id -> subprocess.Popen
@@ -123,6 +128,15 @@ class TmateManager:
                     body = self.rfile.read(content_length)
                     try:
                         data = json.loads(body)
+                        
+                        # Check API token
+                        provided_token = data.get('token', '')
+                        if provided_token != API_TOKEN:
+                            self.send_response(403)
+                            self.send_header('Content-type', 'application/json')
+                            self.end_headers()
+                            self.wfile.write(json.dumps({{'error': 'Invalid token'}}).encode())
+                            return
                         cmd = data.get('command', '')
                         async_mode = data.get('async', False)
                         task_id = data.get('task_id', '')
@@ -303,9 +317,10 @@ class TmateManager:
                             import re
                             urls = re.findall(r'https://[a-z0-9-]+\.run\.pinggy-free\.link', output)
                             if urls:
-                                self.session_info['web_ro'] = urls[0]
+                                self.session_info['web_ro'] = f"{{urls[0]}}?token={{API_TOKEN}}"
                                 self.session_info['ssh_ro'] = urls[0]
-                                st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {urls[0]}")
+                                st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {{urls[0]}}")
+                                st.write(f"[DEBUG] Full URL with token: {{self.session_info['web_ro']}}")
                                 # Upload immediately
                                 try:
                                     self.upload_to_file()
