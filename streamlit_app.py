@@ -205,9 +205,9 @@ class TmateManager:
                                 response = {'status': 'shell_closed'}
                             else:
                                 response = {'error': 'Shell not found'}
-                        
+
                         # Query async task result
-                        if task_id:
+                        elif task_id:
                             if task_id in tasks:
                                 task = tasks[task_id]
                                 if task['proc'].poll() is None:
