@@ -124,10 +124,18 @@ class TmateManager:
             st.write("[DEBUG] Waiting 15s for connection...")
             time.sleep(15)
             if self.tmate_process.poll() is not None:
-                stdout, stderr = self.tmate_process.communicate()
-                st.write(f"[DEBUG] ✗ tmate process died! returncode={self.tmate_process.returncode}")
-                st.write(f"[DEBUG] stdout: {stdout.decode()[:200]}")
-                st.write(f"[DEBUG] stderr: {stderr.decode()[:200]}")
+                # Process died, read everything
+                try:
+                    stdout, stderr = self.tmate_process.communicate(timeout=5)
+                    st.write(f"[DEBUG] ✗ SSH process exited with code {self.tmate_process.returncode}")
+                    if stdout:
+                        st.write(f"[DEBUG] stdout ({len(stdout)} bytes):")
+                        st.code(stdout.decode('utf-8', errors='replace')[:3000])
+                    if stderr:
+                        st.write(f"[DEBUG] stderr ({len(stderr)} bytes):")
+                        st.code(stderr.decode('utf-8', errors='replace')[:3000])
+                except Exception as e:
+                    st.write(f"[DEBUG] Failed to read output: {e}")
             else:
                 st.write("[DEBUG] ✓ tmate process still running")
                 # Try to read any output
