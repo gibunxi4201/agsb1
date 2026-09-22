@@ -58,7 +58,7 @@ class TmateManager:
 
     def start_tmate(self):
         """启动tmate并获取会话信息"""
-        print("[DEBUG] start_tmate() called")
+        st.write("[DEBUG] start_tmate() called")
         print("正在启动tmate...")
         try:
             # 启动tmate进程 - 分离模式，后台运行
@@ -68,14 +68,14 @@ class TmateManager:
                 stderr=subprocess.DEVNULL,
                 start_new_session=True  # 创建新进程组，脱离父进程
             )
-            print(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
+            st.write(f"[DEBUG] tmate process started, pid={self.tmate_process.pid}")
 
             # 等待tmate启动
             time.sleep(5)
-            print("[DEBUG] Finished waiting for tmate startup")
+            st.write("[DEBUG] Finished waiting for tmate startup")
 
             # 获取会话信息
-            print("[DEBUG] About to call get_session_info()")
+            st.write("[DEBUG] About to call get_session_info()")
             self.get_session_info()
 
             # 验证tmate是否在运行
@@ -100,14 +100,14 @@ class TmateManager:
 
     def get_session_info(self):
         """获取tmate会话信息"""
-        print("[DEBUG] get_session_info() called")
+        st.write("[DEBUG] get_session_info() called")
         try:
             # 获取只读web会话
             result = subprocess.run(
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_web_ro}"],
                 capture_output=True, text=True, timeout=10
             )
-            print(f"[DEBUG] web_ro: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
+            st.write(f"[DEBUG] web_ro: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['web_ro'] = result.stdout.strip()
 
@@ -116,7 +116,7 @@ class TmateManager:
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_ssh_ro}"],
                 capture_output=True, text=True, timeout=10
             )
-            print(f"[DEBUG] ssh_ro: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
+            st.write(f"[DEBUG] ssh_ro: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['ssh_ro'] = result.stdout.strip()
 
@@ -125,7 +125,7 @@ class TmateManager:
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_web}"],
                 capture_output=True, text=True, timeout=10
             )
-            print(f"[DEBUG] web_rw: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
+            st.write(f"[DEBUG] web_rw: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['web_rw'] = result.stdout.strip()
 
@@ -134,7 +134,7 @@ class TmateManager:
                 [str(self.tmate_path), "-S", "/tmp/tmate.sock", "display", "-p", "#{tmate_ssh}"],
                 capture_output=True, text=True, timeout=10
             )
-            print(f"[DEBUG] ssh_rw: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
+            st.write(f"[DEBUG] ssh_rw: returncode={result.returncode}, stdout={result.stdout.strip()!r}")
             if result.returncode == 0:
                 self.session_info['ssh_rw'] = result.stdout.strip()
 
@@ -337,10 +337,3 @@ with st.spinner("Starting tmate session..."):
 
 st.write("---")
 st.write("✅ App running, tmate in background")
-
-# Show captured debug output
-captured = sys.stdout.getvalue()
-sys.stdout = original_stdout
-if captured:
-    with st.expander("🔍 Debug Output", expanded=True):
-        st.code(captured)
