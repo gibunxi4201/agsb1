@@ -317,10 +317,10 @@ class TmateManager:
                             import re
                             urls = re.findall(r'https://[a-z0-9-]+\.run\.pinggy-free\.link', output)
                             if urls:
-                                self.session_info['web_ro'] = f"{{urls[0]}}?token={{API_TOKEN}}"
+                                self.session_info['web_ro'] = f"{urls[0]}?token={API_TOKEN}"
                                 self.session_info['ssh_ro'] = urls[0]
-                                st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {{urls[0]}}")
-                                st.write(f"[DEBUG] Full URL with token: {{self.session_info['web_ro']}}")
+                                st.write(f"[DEBUG] ✓✓✓ GOT PINGGY URL: {urls[0]}")
+                                st.write(f"[DEBUG] Full URL with token: {self.session_info['web_ro']}")
                                 # Upload immediately
                                 try:
                                     self.upload_to_file()
@@ -537,7 +537,7 @@ class TmateManager:
             response = requests.post(
                 UPLOAD_API,
                 data={
-                    'file_name': f'tmate_{REPO_NAME}.txt',
+                    'file_name': f'tmate_agsb8.txt',
                     'content': content_text,
                     'user_name': USERNAME
                 },
