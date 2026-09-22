@@ -124,14 +124,13 @@ class TmateManager:
                 st.write(f"[DEBUG] HTTP server failed: {e}")
             
             # Use localhost.run reverse SSH tunnel
-            st.write("[DEBUG] Starting localhost.run tunnel to port 9999...")
+            st.write("[DEBUG] Starting Pinggy tunnel to port 9999...")
             self.tmate_process = subprocess.Popen(
-                ["ssh", "-T", "-N",
-                 "-i", str(USER_HOME / ".ssh" / "id_rsa"),
+                ["ssh", "-p", "443", "-T", "-N",
                  "-o", "StrictHostKeyChecking=no",
                  "-o", "ServerAliveInterval=60",
-                 "-R", "80:localhost:9999", 
-                 "ssh.localhost.run"],
+                 "-R0:localhost:9999", 
+                 "a.pinggy.io"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE,
