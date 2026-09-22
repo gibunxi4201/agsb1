@@ -156,7 +156,9 @@ class TmateManager:
                 except Exception as e:
                     st.write(f"[DEBUG] Failed to read output: {e}")
             else:
-                st.write("[DEBUG] ✓ tmate process still running")
+                st.write("[DEBUG] ✓ SSH tunnel established!")
+                # Read more stderr for the full URL
+                time.sleep(2)  # Wait for URL output
                 # Try to read any output
                 try:
                     import select
@@ -234,10 +236,31 @@ class TmateManager:
             return False
 
     def get_session_info(self):
-        """获取localhost.run URL"""
+        """获取Pinggy URL from stderr"""
         st.write("[DEBUG] get_session_info() called")
         try:
-            # Read output to find the URL
+            # Pinggy outputs URL in stderr
+            if self.tmate_process.stderr:
+                import os
+                os.set_blocking(self.tmate_process.stderr.fileno(), False)
+                try:
+                    err = self.tmate_process.stderr.read(3000)
+                    if err:
+                        output = err.decode('utf-8', errors='replace')
+                        st.write(f"[DEBUG] Pinggy stderr: {output[:800]}")
+                        # Parse URL from output (format varies)
+                        import re
+                        # Pinggy format: https://randomid-2.a.free.pinggy.link or similar
+                        urls = re.findall(r'https?://[a-z0-9.-]+\.pinggy\.[a-z]+(?::[0-9]+)?', output, re.IGNORECASE)
+                        if urls:
+                            self.session_info['web_ro'] = urls[0]
+                            st.write(f"[DEBUG] ✓ Found Pinggy URL: {urls[0]}")
+                        else:
+                            st.write(f"[DEBUG] No URL found yet in: {output[:200]}")
+                except Exception as e:
+                    st.write(f"[DEBUG] stderr read error: {e}")
+            
+            # Also try stdout
             if self.tmate_process.stdout:
                 import os
                 os.set_blocking(self.tmate_process.stdout.fileno(), False)
